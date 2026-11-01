@@ -1,0 +1,352 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Tersine</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=DM+Sans:wght@400;500&display=swap">
+<style>
+/* Düzen: tek sütun, iki ardışık kart. Mavi = düz ses, turuncu = ters ses. */
+:root {
+  --bg: #eceef3;
+  --surface: #ffffff;
+  --fg: #14161c;
+  --muted: #6b7183;
+  --line: #d8dbe4;
+  --fwd: #1f5eff;
+  --rev: #f2552f;
+  --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1015; --surface: #171a21; --fg: #eef0f5; --muted: #8d94a6;
+    --line: #272b36; --fwd: #6f96ff; --rev: #ff7b5c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1015; --surface: #171a21; --fg: #eef0f5; --muted: #8d94a6;
+  --line: #272b36; --fwd: #6f96ff; --rev: #ff7b5c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  padding-block: 28px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+h1 {
+  font-family: var(--font-display); font-weight: 700; font-size: 2.1rem;
+  letter-spacing: -0.02em; margin: 0; text-wrap: balance;
+}
+h1 i { font-style: normal; color: var(--rev); display: inline-block; transform: scaleX(-1); }
+.link {
+  font: inherit; font-size: 0.9rem; color: var(--muted); background: none; border: 0;
+  padding: 8px 4px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+}
+.link[hidden] { display: none; }
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 22px;
+  padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0;
+  transition: opacity .2s;
+}
+.card.locked { opacity: 0.45; }
+.head { display: flex; align-items: center; gap: 10px; }
+.step {
+  font-family: var(--font-display); font-weight: 700; font-size: 0.85rem;
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--fg); color: var(--bg);
+}
+.head h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.2rem; margin: 0; letter-spacing: -0.01em; }
+.wave { position: relative; height: 96px; }
+.wave canvas { width: 100%; height: 100%; display: block; }
+.tag {
+  position: absolute; right: 0; top: 0; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); font-weight: 500;
+}
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rec {
+  width: 60px; height: 60px; border-radius: 50%; border: 0; cursor: pointer; flex: none;
+  background: var(--rev); color: #fff; display: grid; place-items: center;
+}
+.rec svg { width: 26px; height: 26px; }
+.rec.live { box-shadow: 0 0 0 6px color-mix(in srgb, var(--rev) 30%, transparent); }
+.pill {
+  flex: 1 1 110px; min-width: 0; height: 48px; border-radius: 999px; cursor: pointer;
+  border: 1.5px solid var(--line); background: transparent; color: var(--fg);
+  font: 500 1rem var(--font-body); display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.pill svg { width: 16px; height: 16px; flex: none; }
+.pill.f svg { color: var(--fwd); }
+.pill.r svg { color: var(--rev); }
+.pill.on.f { border-color: var(--fwd); }
+.pill.on.r { border-color: var(--rev); }
+.pill.nudge { border-color: var(--rev); }
+button:disabled { opacity: 0.35; cursor: default; }
+button:focus-visible { outline: 3px solid var(--fwd); outline-offset: 2px; }
+.hint { margin: 0; font-size: 0.9rem; color: var(--muted); min-height: 1.3em; }
+.hint.busy { color: var(--rev); }
+input[type=file] { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .pill.nudge { animation: nudge 1.4s ease-in-out 2; }
+  @keyframes nudge { 50% { transform: scale(1.03); } }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Tersine<i>→</i></h1>
+    <button class="link" id="reset" hidden>Yeni kelime</button>
+  </header>
+
+  <section class="card" id="c1" data-slot="0">
+    <div class="head"><span class="step">1</span><h2>Bir kelime söyle</h2></div>
+    <div class="wave"><canvas aria-label="Ses dalgası"></canvas><span class="tag"></span></div>
+    <div class="row">
+      <button class="rec" aria-label="Kaydet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <button class="pill f" data-dir="fwd" disabled><svg viewBox="0 0 16 16"><path d="M3 2l11 6-11 6z" fill="currentColor"/></svg>Düz</button>
+      <button class="pill r" data-dir="rev" disabled><svg viewBox="0 0 16 16"><path d="M13 2L2 8l11 6z" fill="currentColor"/></svg>Ters</button>
+    </div>
+    <p class="hint">Düğmeye bas, konuş, tekrar bas.</p>
+    
+  </section>
+
+  <section class="card locked" id="c2" data-slot="1">
+    <div class="head"><span class="step">2</span><h2>Tersini söyle</h2></div>
+    <div class="wave"><canvas aria-label="Ses dalgası"></canvas><span class="tag"></span></div>
+    <div class="row">
+      <button class="rec" aria-label="Kaydet" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <button class="pill f" data-dir="fwd" disabled><svg viewBox="0 0 16 16"><path d="M3 2l11 6-11 6z" fill="currentColor"/></svg>Düz</button>
+      <button class="pill r" data-dir="rev" disabled><svg viewBox="0 0 16 16"><path d="M13 2L2 8l11 6z" fill="currentColor"/></svg>Ters</button>
+    </div>
+    <p class="hint"></p>
+    
+  </section>
+</div>
+
+<script>
+(function () {
+  var AC = window.AudioContext || window.webkitAudioContext;
+  var ctx = null;
+  function getCtx() {
+    if (!ctx) ctx = new AC();
+    if (ctx.state === "suspended") ctx.resume();
+    return ctx;
+  }
+
+  var slots = [0, 1].map(function (i) {
+    var card = document.getElementById(i === 0 ? "c1" : "c2");
+    return {
+      card: card,
+      canvas: card.querySelector("canvas"),
+      tag: card.querySelector(".tag"),
+      rec: card.querySelector(".rec"),
+      file: card.querySelector("input[type=file]"),
+      hint: card.querySelector(".hint"),
+      pills: card.querySelectorAll(".pill"),
+      fwd: null, rev: null, peaks: null,
+      view: "fwd", progress: -1
+    };
+  });
+  var playing = null, raf = 0, current = null;
+
+  function css(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888";
+  }
+
+  /* --- ses işleme --- */
+  function decode(ab) {
+    return new Promise(function (res, rej) { getCtx().decodeAudioData(ab, res, rej); });
+  }
+  function trim(buf) {
+    var d = buf.getChannelData(0), n = d.length, peak = 0, i;
+    for (i = 0; i < n; i++) { var a = Math.abs(d[i]); if (a > peak) peak = a; }
+    var th = Math.max(0.01, peak * 0.08), s = 0, e = n - 1;
+    while (s < n && Math.abs(d[s]) < th) s++;
+    while (e > s && Math.abs(d[e]) < th) e--;
+    var pad = Math.floor(buf.sampleRate * 0.06);
+    s = Math.max(0, s - pad); e = Math.min(n - 1, e + pad);
+    var len = Math.max(1, e - s + 1);
+    var out = getCtx().createBuffer(buf.numberOfChannels, len, buf.sampleRate);
+    for (var c = 0; c < buf.numberOfChannels; c++) {
+      out.getChannelData(c).set(buf.getChannelData(c).subarray(s, e + 1));
+    }
+    return out;
+  }
+  function reverse(buf) {
+    var out = getCtx().createBuffer(buf.numberOfChannels, buf.length, buf.sampleRate);
+    for (var c = 0; c < buf.numberOfChannels; c++) {
+      var src = buf.getChannelData(c), dst = out.getChannelData(c), n = src.length;
+      for (var i = 0; i < n; i++) dst[i] = src[n - 1 - i];
+    }
+    return out;
+  }
+  function computePeaks(buf) {
+    var N = 240, d = buf.getChannelData(0), step = Math.max(1, Math.floor(d.length / N)), out = [], m = 0;
+    for (var i = 0; i < N; i++) {
+      m = 0;
+      for (var j = i * step; j < Math.min(d.length, (i + 1) * step); j++) { var a = Math.abs(d[j]); if (a > m) m = a; }
+      out.push(m);
+    }
+    var mx = Math.max.apply(null, out) || 1;
+    return out.map(function (v) { return v / mx; });
+  }
+
+  /* --- çizim --- */
+  function draw(slot) {
+    var cv = slot.canvas, dpr = window.devicePixelRatio || 1;
+    var w = Math.max(1, Math.floor(cv.clientWidth * dpr)), h = Math.max(1, Math.floor(cv.clientHeight * dpr));
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    var g = cv.getContext("2d");
+    g.clearRect(0, 0, w, h);
+    var bw = 3 * dpr, gap = 3 * dpr, n = Math.floor(w / (bw + gap)), mid = h / 2, i;
+    if (!slot.peaks) {
+      g.fillStyle = css("--line");
+      for (i = 0; i < n; i++) g.fillRect(i * (bw + gap), mid - dpr, bw, 2 * dpr);
+      return;
+    }
+    var isRev = slot.view === "rev", color = css(isRev ? "--rev" : "--fwd"), P = slot.peaks, L = P.length;
+    for (i = 0; i < n; i++) {
+      var idx = Math.min(L - 1, Math.floor(i / n * L));
+      if (isRev) idx = L - 1 - idx;
+      var v = Math.max(0.04, P[idx]), bh = v * (h - 8 * dpr);
+      var played = slot.progress >= 0 && (i / n) <= slot.progress;
+      g.globalAlpha = slot.progress < 0 ? 1 : (played ? 1 : 0.3);
+      g.fillStyle = color;
+      g.fillRect(i * (bw + gap), mid - bh / 2, bw, bh);
+    }
+    g.globalAlpha = 1;
+    slot.tag.textContent = isRev ? "ters" : "düz";
+  }
+  function drawAll() { slots.forEach(draw); }
+
+  /* --- oynatma --- */
+  function stop() {
+    if (playing) { try { playing.src.onended = null; playing.src.stop(); } catch (e) {} }
+    cancelAnimationFrame(raf);
+    if (current) {
+      current.progress = -1; current.view = "fwd";
+      current.pills.forEach(function (p) { p.classList.remove("on"); });
+      draw(current);
+    }
+    playing = null; current = null;
+  }
+  function play(slot, dir) {
+    stop();
+    var buf = dir === "rev" ? slot.rev : slot.fwd;
+    if (!buf) return;
+    var c = getCtx(), src = c.createBufferSource();
+    src.buffer = buf; src.connect(c.destination);
+    slot.view = dir; slot.progress = 0; current = slot;
+    slot.pills.forEach(function (p) { p.classList.toggle("on", p.dataset.dir === dir); });
+    var t0 = c.currentTime;
+    playing = { src: src };
+    src.onended = function () { stop(); };
+    src.start();
+    (function tick() {
+      if (current !== slot) return;
+      slot.progress = Math.min(1, (c.currentTime - t0) / buf.duration);
+      draw(slot);
+      raf = requestAnimationFrame(tick);
+    })();
+  }
+
+  /* --- kayıt (telefonun kaydedicisi) --- */
+  function setBusy(slot, msg) {
+    slot.hint.textContent = msg || "";
+    slot.hint.classList.toggle("busy", !!msg);
+  }
+  function load(slot, i, file) {
+    setBusy(slot, "Hazırlanıyor…");
+    file.arrayBuffer().then(decode).then(function (buf) {
+      var t = trim(buf);
+      slot.fwd = t; slot.rev = reverse(t); slot.peaks = computePeaks(t);
+      slot.view = "fwd"; slot.progress = -1;
+      slot.pills.forEach(function (p) { p.disabled = false; p.classList.remove("nudge"); });
+      setBusy(slot, "");
+      draw(slot);
+      document.getElementById("reset").hidden = false;
+      if (i === 0) {
+        slots[1].card.classList.remove("locked");
+        slots[1].rec.disabled = false;
+        slots[1].hint.textContent = "Ters dinlediğin sesi aynen taklit et.";
+        slots[0].hint.textContent = "";
+        setTimeout(function () { play(slots[0], "rev"); }, 150);
+      } else {
+        slot.hint.textContent = "Taklidini tersine çevirmek için Ters'e bas.";
+        slot.pills[1].classList.add("nudge");
+      }
+    }).catch(function () {
+      setBusy(slot, "Bu kayıt açılamadı. Bir daha dene.");
+    });
+  }
+
+  slots.forEach(function (slot, i) {
+    var mr = null, chunks = [], timer = 0;
+    slot.rec.addEventListener("click", function () {
+      getCtx();
+      if (mr && mr.state === "recording") { mr.stop(); return; }
+      stop();
+      if (window.isSecureContext === false) { setBusy(slot, "Mikrofon yalnızca https adresinde çalışır. Dosyayı https üzerinden aç."); return; }
+      if (!navigator.mediaDevices || !window.MediaRecorder) { setBusy(slot, "Bu tarayıcı kaydı desteklemiyor."); return; }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (s) {
+        chunks = []; mr = new MediaRecorder(s);
+        mr.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+        mr.onstop = function () {
+          clearTimeout(timer);
+          s.getTracks().forEach(function (t) { t.stop(); });
+          slot.rec.classList.remove("live");
+          load(slot, i, new Blob(chunks, { type: mr.mimeType || "audio/webm" }));
+        };
+        mr.start();
+        slot.rec.classList.add("live");
+        setBusy(slot, "Kaydediyor… bitirmek için tekrar bas.");
+        timer = setTimeout(function () { if (mr.state === "recording") mr.stop(); }, 8000);
+      }).catch(function (err) {
+        var n = err && err.name, msg;
+        if (n === "NotFoundError") msg = "Cihazda çalışan bir mikrofon bulunamadı.";
+        else if (n === "NotReadableError") msg = "Mikrofonu başka bir uygulama kullanıyor. Onu kapatıp tekrar dene.";
+        else if (n === "NotAllowedError" || n === "SecurityError") msg = "Mikrofon engellendi (" + n + "). İzin verdiysen sayfa bir uygulamanın veya önizlemenin içinde açılmış olabilir. Dosyayı tarayıcıda kendi sekmesinde aç.";
+        else msg = "Mikrofon açılamadı (" + (n || "bilinmeyen hata") + ").";
+        setBusy(slot, msg);
+      });
+    });
+    slot.pills.forEach(function (p) {
+      p.addEventListener("click", function () {
+        if (current === slot && slot.view === p.dataset.dir) { stop(); return; }
+        play(slot, p.dataset.dir);
+      });
+    });
+  });
+
+  document.getElementById("reset").addEventListener("click", function () {
+    stop();
+    slots.forEach(function (s, i) {
+      s.fwd = s.rev = s.peaks = null; s.view = "fwd"; s.progress = -1; s.tag.textContent = "";
+      s.pills.forEach(function (p) { p.disabled = true; p.classList.remove("nudge", "on"); });
+      s.hint.textContent = i === 0 ? "Düğmeye bas, konuş, tekrar bas." : "";
+      draw(s);
+    });
+    slots[1].card.classList.add("locked");
+    slots[1].rec.disabled = true;
+    this.hidden = true;
+  });
+
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(drawAll);
+    slots.forEach(function (s) { ro.observe(s.canvas); });
+  } else { window.addEventListener("resize", drawAll); }
+  try {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
+  } catch (e) {}
+  drawAll();
+})();
+</script>
+
+</body></html>
